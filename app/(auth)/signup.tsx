@@ -1,8 +1,9 @@
 import { Link, router } from 'expo-router';
-import { useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text } from 'react-native';
+import { useRef, useState } from 'react';
+import { StyleSheet, Text, TextInput } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button, Card, Input } from '@/components/ui';
+import { Button, Card, Input, KeyboardAwareScrollView } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
 import { textStyles, theme } from '@/lib/theme';
 
@@ -14,6 +15,8 @@ export default function SignupScreen() {
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const passwordRef = useRef<TextInput | null>(null);
+  const confirmPasswordRef = useRef<TextInput | null>(null);
 
   const captureError = (authError: unknown) => {
     setError(authError instanceof Error ? authError.message : 'Something went wrong. Please try again.');
@@ -62,7 +65,7 @@ export default function SignupScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView contentContainerStyle={styles.content} extraBottomPadding={theme.spacing[3]}>
         <Button onPress={() => router.back()} size="sm" variant="ghost">
           Back
         </Button>
@@ -82,14 +85,19 @@ export default function SignupScreen() {
             keyboardType="email-address"
             label="Email"
             onChangeText={setEmail}
+            onSubmitEditing={() => passwordRef.current?.focus()}
             placeholder="artist@example.com"
+            returnKeyType="next"
             value={email}
           />
           <Input
             autoCapitalize="none"
             label="Password"
             onChangeText={setPassword}
+            onSubmitEditing={() => confirmPasswordRef.current?.focus()}
             placeholder="Create a password"
+            ref={passwordRef}
+            returnKeyType="next"
             secureTextEntry
             value={password}
           />
@@ -97,7 +105,10 @@ export default function SignupScreen() {
             autoCapitalize="none"
             label="Confirm password"
             onChangeText={setConfirmPassword}
+            onSubmitEditing={() => void handleSignup()}
             placeholder="Re-enter your password"
+            ref={confirmPasswordRef}
+            returnKeyType="done"
             secureTextEntry
             value={confirmPassword}
           />
@@ -117,7 +128,7 @@ export default function SignupScreen() {
         <Text style={styles.footer}>
           Already have an account? <Link href="/(auth)/login" style={styles.link}>Log in</Link>
         </Text>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

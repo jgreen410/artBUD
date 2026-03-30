@@ -1,7 +1,9 @@
 import { router } from 'expo-router';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FilterChips, MasonryGrid } from '@/components/feed';
+import { LogoMark } from '@/components/icons';
 import { Avatar, Badge, Card } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
 import { useCommunities } from '@/hooks/useCommunities';
@@ -32,7 +34,7 @@ export default function HomeFeedScreen() {
     <View style={styles.headerWrap}>
       <View style={styles.headerTop}>
         <View style={styles.headerCopy}>
-          <Text style={textStyles.meta}>Home Feed</Text>
+          <LogoMark size={40} />
           <Text style={textStyles.screenTitle}>Fresh From The Studio</Text>
           <Text style={styles.copy}>
             A Pinterest-style river of work across the launch communities, shaped for quick

@@ -33,9 +33,16 @@
     },
     "plugins": [
       "expo-router",
+      "expo-apple-authentication",
       "expo-font",
-      "expo-web-browser",
-      "expo-secure-store"
+      [
+        "expo-web-browser",
+        {
+          "experimentalLauncherActivity": false
+        }
+      ],
+      "expo-secure-store",
+      "expo-video"
     ]
   }
 }

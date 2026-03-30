@@ -19,6 +19,7 @@ const aspectRatioOptions = [0.74, 0.82, 0.95, 1.08, 1.22, 0.68] as const;
 const POSTS_QUERY_KEY = 'posts';
 const POST_QUERY_KEY = 'post';
 const POST_COMMENTS_QUERY_KEY = 'post-comments';
+const POST_COUNT_QUERY_KEY = 'post-count';
 
 type MaybeRelation<T> = T | T[] | null;
 
@@ -234,6 +235,25 @@ async function fetchPostComments(postId: string) {
   return ((data as RawComment[] | null) ?? []).map(mapRawComment);
 }
 
+async function fetchPostCount(filters: PostFeedFilters) {
+  const { communityId = null, communityIds = [] } = filters;
+  let query = supabase.from('posts').select('id', { count: 'exact', head: true });
+
+  if (communityId) {
+    query = query.eq('community_id', communityId);
+  } else if (communityIds.length > 0) {
+    query = query.in('community_id', communityIds);
+  }
+
+  const { count, error } = await query;
+
+  if (error) {
+    throw error;
+  }
+
+  return count ?? 0;
+}
+
 export function usePosts(communityId: string | null) {
   return useInfiniteQuery({
     initialPageParam: 0,
@@ -266,6 +286,15 @@ export function usePostComments(postId?: string) {
     queryKey: [POST_COMMENTS_QUERY_KEY, postId],
     queryFn: () => fetchPostComments(postId!),
     enabled: Boolean(postId),
+  });
+}
+
+export function usePostCount(communityId?: string | null) {
+  return useQuery({
+    queryKey: [POST_COUNT_QUERY_KEY, communityId ?? 'all'],
+    queryFn: () => fetchPostCount({ communityId }),
+    enabled: Boolean(communityId),
+    placeholderData: 0,
   });
 }
 
@@ -393,6 +422,7 @@ export function useCreatePost() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: [POSTS_QUERY_KEY] }),
         queryClient.invalidateQueries({ queryKey: [POST_QUERY_KEY, postId] }),
+        queryClient.invalidateQueries({ queryKey: [POST_COUNT_QUERY_KEY] }),
         queryClient.invalidateQueries({ queryKey: ['communities', 'joined'] }),
       ]);
     },

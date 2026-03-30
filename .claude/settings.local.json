@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la /c/Users/jgree/Dev/01-projects/artBUD/lib/theme*)",
+      "Bash(ls \"/c/Users/jgree/Dev/01-projects/artBUD/app/\\(auth\\)\")",
+      "Bash(ls \"/c/Users/jgree/Dev/01-projects/artBUD/app/\\(tabs\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); deps = {**d.get\\(''''dependencies'''',{}\\), **d.get\\(''''devDependencies'''',{}\\)}; [print\\(k,v\\) for k,v in sorted\\(deps.items\\(\\)\\)]\")",
+      "Bash(node -e \"const d = require\\(''/c/Users/jgree/Dev/01-projects/artBUD/package.json''\\); const deps = {...d.dependencies, ...d.devDependencies}; Object.keys\\(deps\\).sort\\(\\).forEach\\(k => console.log\\(k, deps[k]\\)\\)\")",
+      "Bash(find c:/Users/jgree/Dev/01-projects/artBUD -name *.svg)"
+    ]
+  }
+}

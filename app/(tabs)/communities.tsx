@@ -2,9 +2,8 @@ import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
-  Platform,
+  Keyboard,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -12,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CommunityGrid } from '@/components/community';
-import { Badge, Card, Input, Skeleton } from '@/components/ui';
+import { Badge, Card, Input, KeyboardAwareScrollView, Skeleton } from '@/components/ui';
 import {
   useAllCommunities,
   useJoinedCommunities,
@@ -82,7 +81,7 @@ export default function CommunitiesHubScreen() {
   if (allCommunitiesQuery.isLoading && communities.length === 0) {
     return (
       <SafeAreaView edges={['left', 'right']} style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <Skeleton height={28} radius={theme.radius.pill} width="30%" />
             <Skeleton height={34} width="62%" />
@@ -112,17 +111,16 @@ export default function CommunitiesHubScreen() {
               </View>
             ))}
           </View>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView edges={['left', 'right']} style={styles.safeArea}>
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={styles.content}
-        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-        keyboardShouldPersistTaps="handled"
+        extraBottomPadding={theme.spacing[3]}
         refreshControl={
           <RefreshControl
             onRefresh={() => {
@@ -158,7 +156,9 @@ export default function CommunitiesHubScreen() {
           containerStyle={styles.searchInput}
           leftAdornment={<Feather color={theme.colors.text.tertiary} name="search" size={16} />}
           onChangeText={setSearchQuery}
+          onSubmitEditing={() => Keyboard.dismiss()}
           placeholder="Search painting, photography, digital art..."
+          returnKeyType="search"
           value={searchQuery}
         />
 
@@ -231,7 +231,7 @@ export default function CommunitiesHubScreen() {
             />
           )}
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

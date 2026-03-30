@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Avatar, Badge, Button, Card, Input, Tag } from '@/components/ui';
+import { Avatar, Badge, Button, Card, Input, KeyboardAwareScrollView, Tag } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Community } from '@/lib/types';
@@ -18,6 +19,9 @@ export default function OnboardingScreen() {
   const [isLoadingCommunities, setIsLoadingCommunities] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const displayNameRef = useRef<TextInput | null>(null);
+  const avatarUrlRef = useRef<TextInput | null>(null);
+  const bioRef = useRef<TextInput | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -90,7 +94,7 @@ export default function OnboardingScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView contentContainerStyle={styles.content} extraBottomPadding={theme.spacing[3]}>
         <View style={styles.header}>
           <Badge label="Onboarding" variant="neutral" />
           <Text style={textStyles.screenTitle}>Build your profile</Text>
@@ -120,13 +124,18 @@ export default function OnboardingScreen() {
             hint="Lowercase letters, numbers, and underscores only."
             label="Username"
             onChangeText={setUsername}
+            onSubmitEditing={() => displayNameRef.current?.focus()}
             placeholder="marisolatelier"
+            returnKeyType="next"
             value={username}
           />
           <Input
             label="Display name"
             onChangeText={setDisplayName}
+            onSubmitEditing={() => avatarUrlRef.current?.focus()}
             placeholder="Marisol Vale"
+            ref={displayNameRef}
+            returnKeyType="next"
             value={displayName}
           />
           <Input
@@ -134,7 +143,10 @@ export default function OnboardingScreen() {
             hint="Optional for now. You can upload a proper avatar later."
             label="Avatar URL"
             onChangeText={setAvatarUrl}
+            onSubmitEditing={() => bioRef.current?.focus()}
             placeholder="https://..."
+            ref={avatarUrlRef}
+            returnKeyType="next"
             value={avatarUrl}
           />
           <Input
@@ -143,6 +155,7 @@ export default function OnboardingScreen() {
             multiline
             onChangeText={setBio}
             placeholder="Tell Art Bud what kind of work you make."
+            ref={bioRef}
             value={bio}
           />
         </Card>
@@ -175,7 +188,7 @@ export default function OnboardingScreen() {
             Finish onboarding
           </Button>
         </Card>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

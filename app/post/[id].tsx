@@ -1,5 +1,5 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { type ErrorBoundaryProps, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -25,8 +25,64 @@ import { textStyles, theme } from '@/lib/theme';
 import { formatWarmError } from '@/utils/errors';
 import { formatCount, formatRelativeDate } from '@/utils/formatters';
 
+function normalizeRouteParam(value?: string | string[]) {
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+
+  return value;
+}
+
+function sanitizePostDetail(post: ReturnType<typeof usePostDetail>['data']) {
+  if (!post) {
+    return null;
+  }
+
+  return {
+    ...post,
+    images: Array.isArray(post.images) ? post.images : [],
+    medium_tags: Array.isArray(post.medium_tags) ? post.medium_tags : [],
+    subject_tags: Array.isArray(post.subject_tags) ? post.subject_tags : [],
+  };
+}
+
+export function ErrorBoundary(props: ErrorBoundaryProps) {
+  const errorMessage = formatWarmError(
+    props.error,
+    'The post screen hit a rendering problem. Retry the route once more.',
+  );
+
+  return (
+    <SafeAreaView edges={['left', 'right']} style={styles.safeArea}>
+      <View style={styles.centeredState}>
+        <Card style={styles.feedbackCard} variant="muted">
+          <Text style={textStyles.sectionTitle}>This artwork screen hit a snag</Text>
+          <Text style={styles.feedbackCopy}>{errorMessage}</Text>
+          <View style={styles.feedbackActions}>
+            <Button onPress={() => void props.retry()}>Retry</Button>
+            <Button
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                  return;
+                }
+
+                router.replace('/(tabs)');
+              }}
+              variant="surface"
+            >
+              Back to feed
+            </Button>
+          </View>
+        </Card>
+      </View>
+    </SafeAreaView>
+  );
+}
+
 export default function PostDetailScreen() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const id = normalizeRouteParam(params.id);
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [commentDraft, setCommentDraft] = useState('');
@@ -37,7 +93,7 @@ export default function PostDetailScreen() {
   const like = useLike(id);
   const follow = useFollow(postQuery.data?.author_id);
 
-  const post = postQuery.data;
+  const post = sanitizePostDetail(postQuery.data);
   const isRefreshing = (postQuery.isRefetching && !postQuery.isLoading) || commentsQuery.isRefetching;
   const actionError =
     formatWarmError(like.error, '') ||
@@ -178,7 +234,7 @@ export default function PostDetailScreen() {
   return (
     <SafeAreaView edges={['left', 'right']} style={styles.safeArea}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={insets.top}
         style={styles.keyboardFrame}
       >

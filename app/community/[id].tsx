@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { router, useLocalSearchParams } from 'expo-router';
+import { type ErrorBoundaryProps, router, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,21 +11,65 @@ import {
   useJoinedCommunities,
   useToggleCommunityMembership,
 } from '@/hooks/useCommunities';
-import { usePosts } from '@/hooks/usePosts';
+import { usePostCount, usePosts } from '@/hooks/usePosts';
 import { textStyles, theme } from '@/lib/theme';
 import { formatWarmError } from '@/utils/errors';
 import { formatCount } from '@/utils/formatters';
 
 const DEFAULT_BLURHASH = '|rF?hV%2WCj[ayj[jt7j[ayj[ayj[ayj[ayj[ayfQfQfQfQfQfQ';
 
+function normalizeRouteParam(value?: string | string[]) {
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+
+  return value;
+}
+
+export function ErrorBoundary(props: ErrorBoundaryProps) {
+  const errorMessage = formatWarmError(
+    props.error,
+    'The community screen hit a rendering problem. Retry the route once more.',
+  );
+
+  return (
+    <SafeAreaView edges={['left', 'right']} style={styles.safeArea}>
+      <View style={styles.centeredState}>
+        <Card style={styles.feedbackCard} variant="muted">
+          <Text style={textStyles.sectionTitle}>This community screen hit a snag</Text>
+          <Text style={styles.copy}>{errorMessage}</Text>
+          <View style={styles.feedbackActions}>
+            <Button onPress={() => void props.retry()}>Retry</Button>
+            <Button
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                  return;
+                }
+
+                router.replace('/(tabs)');
+              }}
+              variant="surface"
+            >
+              Back to app
+            </Button>
+          </View>
+        </Card>
+      </View>
+    </SafeAreaView>
+  );
+}
+
 export default function CommunityDetailScreen() {
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const communityId = normalizeRouteParam(params.id);
   const insets = useSafeAreaInsets();
 
-  const communityQuery = useCommunity(params.id);
+  const communityQuery = useCommunity(communityId);
   const joinedCommunitiesQuery = useJoinedCommunities();
   const membershipMutation = useToggleCommunityMembership();
-  const postsQuery = usePosts(params.id ?? null);
+  const postCountQuery = usePostCount(communityId);
+  const postsQuery = usePosts(communityId ?? null);
 
   const community = communityQuery.data;
   const posts = postsQuery.data?.pages.flatMap((page) => page.items) ?? [];
@@ -36,19 +80,22 @@ export default function CommunityDetailScreen() {
     membershipMutation.isPending && membershipMutation.variables
       ? membershipMutation.variables.communityId
       : null;
-  const hasBlockingError = communityQuery.isError || postsQuery.isError || joinedCommunitiesQuery.isError;
+  const hasBlockingError =
+    communityQuery.isError || postCountQuery.isError || postsQuery.isError || joinedCommunitiesQuery.isError;
   const errorMessage =
     formatWarmError(communityQuery.error, '') ||
+    formatWarmError(postCountQuery.error, '') ||
     formatWarmError(postsQuery.error, '') ||
     formatWarmError(joinedCommunitiesQuery.error, 'This community could not load just yet.');
 
   const handleRefresh = () => {
     void communityQuery.refetch();
+    void postCountQuery.refetch();
     void joinedCommunitiesQuery.refetch();
     void postsQuery.refetch();
   };
 
-  if (!params.id) {
+  if (!communityId) {
     return (
       <SafeAreaView edges={['left', 'right']} style={styles.safeArea}>
         <View style={styles.centeredState}>
@@ -69,27 +116,21 @@ export default function CommunityDetailScreen() {
       <View style={styles.headerWrap}>
         <View style={styles.hero}>
           <Skeleton height={308} radius={theme.radius.lg} />
-          <View
-            style={[
-              styles.backButtonWrap,
-              {
-                top: insets.top + theme.spacing[1],
-              },
-            ]}
-          >
+          <View style={[styles.heroTopRow, { top: insets.top + theme.spacing[1] }]}>
             <Skeleton height={40} radius={theme.radius.pill} width={84} />
+            <View style={styles.heroMetricRow}>
+              <Skeleton height={28} radius={theme.radius.pill} width={88} />
+              <Skeleton height={28} radius={theme.radius.pill} width={72} />
+            </View>
           </View>
         </View>
 
         <Card style={styles.feedbackCard} variant="muted">
-          <View style={styles.heroBadgeRow}>
-            <Skeleton height={28} radius={theme.radius.pill} width="34%" />
-            <Skeleton height={28} radius={theme.radius.pill} width="24%" />
-          </View>
           <Skeleton height={32} width="44%" />
           <Skeleton height={34} width="62%" />
           <Skeleton height={16} width="100%" />
           <Skeleton height={16} width="78%" />
+          <Skeleton height={44} radius={theme.radius.pill} width={164} />
         </Card>
       </View>
     );
@@ -147,14 +188,7 @@ export default function CommunityDetailScreen() {
           <View style={styles.heroFallback} />
         )}
         <View style={styles.heroOverlay} />
-        <View
-          style={[
-            styles.backButtonWrap,
-            {
-              top: insets.top + theme.spacing[1],
-            },
-          ]}
-        >
+        <View style={[styles.heroTopRow, { top: insets.top + theme.spacing[1] }]}>
           <Button
             iconLeft={<Feather color={theme.colors.text.primary} name="chevron-left" size={18} />}
             onPress={() => router.back()}
@@ -164,12 +198,15 @@ export default function CommunityDetailScreen() {
           >
             Back
           </Button>
+          <View style={styles.heroMetricRow}>
+            <Badge label={`${formatCount(community.member_count)} members`} variant="neutral" />
+            <Badge
+              label={`${formatCount(postCountQuery.data ?? posts.length)} posts`}
+              variant="terracotta"
+            />
+          </View>
         </View>
         <View style={styles.heroContent}>
-          <View style={styles.heroBadgeRow}>
-            <Badge label={`${formatCount(community.member_count)} members`} variant="neutral" />
-            {isJoined ? <Badge label="Joined" variant="professional" /> : null}
-          </View>
           <Text style={styles.emoji}>{community.icon_emoji}</Text>
           <Text style={styles.title}>{community.name}</Text>
           <Text style={styles.description}>{community.description}</Text>
@@ -187,7 +224,6 @@ export default function CommunityDetailScreen() {
             >
               {isJoined ? 'Joined' : 'Join Community'}
             </Button>
-            <Badge label={`${posts.length} loaded`} variant="neutral" />
           </View>
         </View>
       </View>
@@ -280,15 +316,19 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: theme.spacing[2],
   },
-  heroBadgeRow: {
+  heroTopRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    left: theme.spacing[2],
+    position: 'absolute',
+    right: theme.spacing[2],
+    zIndex: 5,
+  },
+  heroMetricRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
-  },
-  backButtonWrap: {
-    left: theme.spacing[2],
-    position: 'absolute',
-    zIndex: 5,
   },
   backButton: {
     backgroundColor: 'rgba(245, 237, 224, 0.92)',
@@ -308,11 +348,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.inverse,
   },
   heroActionRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 4,
+    marginTop: 6,
   },
   joinButton: {
     minWidth: 160,

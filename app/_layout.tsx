@@ -4,15 +4,16 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useAuth, useAuthBootstrap } from '@/hooks/useAuth';
 import { useArtBudFonts } from '@/lib/fonts';
+import { getRootRedirectDecision } from '@/lib/navigation';
 import { queryClient } from '@/lib/queryClient';
 import { bindSupabaseAuthAppState } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
+import { KeyboardDismissAccessory } from '@/components/ui';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -24,10 +25,6 @@ export default function RootLayout() {
 
   useAuthBootstrap();
 
-  useEffect(() => {
-    void SystemUI.setBackgroundColorAsync(theme.colors.background.base);
-  }, []);
-
   useEffect(() => bindSupabaseAuthAppState(), []);
 
   useEffect(() => {
@@ -35,25 +32,20 @@ export default function RootLayout() {
       return;
     }
 
-    const firstSegment = segments[0];
-    const secondSegment = segments[1];
-    const inAuthGroup = firstSegment === '(auth)';
-    const inTabsGroup = firstSegment === '(tabs)';
-    const isCallbackRoute = firstSegment === 'auth' && secondSegment === 'callback';
-    const isOnboardingRoute = firstSegment === '(auth)' && secondSegment === 'onboarding';
+    const redirectDecision = getRootRedirectDecision({
+      segments,
+      isLoggedIn,
+      needsOnboarding,
+    });
 
-    if (!isLoggedIn && !inAuthGroup && !isCallbackRoute) {
-      router.replace('/(auth)/welcome');
-      return;
-    }
+    if (redirectDecision) {
+      if (__DEV__) {
+        console.info(
+          `[nav-guard] ${redirectDecision.reason} -> ${redirectDecision.href} from /${segments.join('/')}`,
+        );
+      }
 
-    if (isLoggedIn && needsOnboarding && !isOnboardingRoute) {
-      router.replace('/(auth)/onboarding');
-      return;
-    }
-
-    if (isLoggedIn && !needsOnboarding && !inTabsGroup) {
-      router.replace('/(tabs)');
+      router.replace(redirectDecision.href);
     }
   }, [fontsLoaded, isHydrating, isLoggedIn, needsOnboarding, router, segments]);
 
@@ -79,6 +71,7 @@ export default function RootLayout() {
             },
           }}
         />
+        <KeyboardDismissAccessory />
       </QueryClientProvider>
     </GestureHandlerRootView>
   );

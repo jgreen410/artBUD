@@ -1,3 +1,4 @@
+import { Children } from 'react';
 import { ActivityIndicator, Pressable, PressableProps, StyleProp, StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
 
 import { textStyles, theme } from '@/lib/theme';
@@ -107,7 +108,9 @@ export function Button({
   ...pressableProps
 }: ButtonProps) {
   const isDisabled = disabled || loading;
-  const isTextChild = typeof children === 'string' || typeof children === 'number';
+  const childArray = Children.toArray(children);
+  const isTextChild = childArray.length > 0 && childArray.every((child) => typeof child === 'string' || typeof child === 'number');
+  const textContent = isTextChild ? childArray.join('') : null;
 
   return (
     <Pressable
@@ -132,7 +135,7 @@ export function Button({
           <>
             {iconLeft ? <View style={styles.icon}>{iconLeft}</View> : null}
             {isTextChild ? (
-              <Text style={[textStyles.buttonLabel, labelStyles[variant], labelStyle]}>{children}</Text>
+              <Text style={[textStyles.buttonLabel, labelStyles[variant], labelStyle]}>{textContent}</Text>
             ) : (
               children
             )}

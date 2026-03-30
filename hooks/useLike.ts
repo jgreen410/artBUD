@@ -97,6 +97,7 @@ export function useLike(postId?: string) {
       if (postId) {
         await queryClient.invalidateQueries({ queryKey: ['post', postId] });
         await queryClient.invalidateQueries({ queryKey: ['posts'] });
+        await queryClient.invalidateQueries({ queryKey: ['profile-posts'] });
       }
     },
   });

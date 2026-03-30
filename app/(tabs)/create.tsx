@@ -1,19 +1,18 @@
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Badge, Button, Card, Input, Tag } from '@/components/ui';
+import { Badge, Button, Card, Input, KeyboardAwareScrollView, Tag } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
 import { useJoinedCommunities } from '@/hooks/useCommunities';
 import { useCreatePost } from '@/hooks/usePosts';
@@ -72,7 +71,6 @@ function toggleValue(current: string[], value: string) {
 }
 
 export default function CreatePostScreen() {
-  const insets = useSafeAreaInsets();
   const { isConfigured } = useAuth();
   const joinedCommunitiesQuery = useJoinedCommunities();
   const createPostMutation = useCreatePost();
@@ -85,6 +83,7 @@ export default function CreatePostScreen() {
   const [selectedSubjectTags, setSelectedSubjectTags] = useState<string[]>([]);
   const [images, setImages] = useState<LocalImageAsset[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const descriptionRef = useRef<TextInput | null>(null);
 
   const joinedCommunities = joinedCommunitiesQuery.data ?? [];
   const selectedCommunity =
@@ -165,22 +164,11 @@ export default function CreatePostScreen() {
 
   return (
     <SafeAreaView edges={['left', 'right']} style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={insets.top}
-        style={styles.keyboardFrame}
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.content}
+        extraBottomPadding={theme.spacing[4]}
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          contentContainerStyle={[
-            styles.content,
-            {
-              paddingBottom: Math.max(theme.spacing[4], insets.bottom + theme.spacing[2]),
-            },
-          ]}
-          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
           <View style={styles.header}>
             <Badge label="Create" variant="terracotta" />
             <Text style={textStyles.screenTitle}>Share New Work</Text>
@@ -275,7 +263,9 @@ export default function CreatePostScreen() {
               label="Title"
               maxLength={120}
               onChangeText={setTitle}
+              onSubmitEditing={() => descriptionRef.current?.focus()}
               placeholder="Evening wash study in ultramarine"
+              returnKeyType="next"
               value={title}
             />
             <Input
@@ -285,6 +275,7 @@ export default function CreatePostScreen() {
               multiline
               onChangeText={setDescription}
               placeholder="What were you exploring here?"
+              ref={descriptionRef}
               value={description}
             />
           </Card>
@@ -414,8 +405,7 @@ export default function CreatePostScreen() {
           >
             Publish Post
           </Button>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }
@@ -423,9 +413,6 @@ export default function CreatePostScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     backgroundColor: theme.colors.background.base,
-    flex: 1,
-  },
-  keyboardFrame: {
     flex: 1,
   },
   content: {

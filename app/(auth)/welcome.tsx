@@ -1,142 +1,202 @@
+import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
-import { Image } from 'expo-image';
 import { useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Badge, Button, Card } from '@/components/ui';
+import { AuthVideoHero } from '@/components/auth';
+import { AppleMark, EmailMark, GoogleMark, LogoMark, PhoneMark } from '@/components/icons';
 import { useAuth } from '@/hooks/useAuth';
-import { textStyles, theme } from '@/lib/theme';
+import { authShowcaseItems } from '@/lib/authShowcase';
+import { theme } from '@/lib/theme';
 
 export default function WelcomeScreen() {
-  const { isAppleSignInAvailable, isConfigured, signInWithApple, signInWithGoogle } = useAuth();
-  const [busyAction, setBusyAction] = useState<'google' | 'apple' | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { isAppleSignInAvailable } = useAuth();
+  const insets = useSafeAreaInsets();
+  const [activeIndex, setActiveIndex] = useState(0);
 
-  const runSocialAuth = async (provider: 'google' | 'apple') => {
-    setBusyAction(provider);
-    setError(null);
-
-    try {
-      if (provider === 'google') {
-        await signInWithGoogle();
-      } else {
-        await signInWithApple();
-      }
-    } catch (authError) {
-      setError(authError instanceof Error ? authError.message : 'Something went wrong during sign in.');
-    } finally {
-      setBusyAction(null);
-    }
+  const showComingSoon = (provider: 'google' | 'apple' | 'phone') => {
+    const label =
+      provider === 'google' ? 'Google' : provider === 'apple' ? 'Apple' : 'SMS code';
+    Alert.alert('Coming Soon', `${label} sign in is coming soon.`);
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.hero}>
-          <Image
-            contentFit="contain"
-            source={require('../../assets/branding/art-bud-logo.png')}
-            style={styles.logo}
-            transition={200}
-          />
-          <Badge label="Core MVP" variant="neutral" />
-          <Text style={styles.title}>Art Bud</Text>
-          <Text style={styles.tagline}>Where Pros Meet Hobbyists</Text>
-          <Text style={styles.copy}>
-            A warm, focused community space for finished work, practice studies, and conversations
-            between working artists and dedicated hobbyists.
-          </Text>
+    <View style={styles.root}>
+      <StatusBar style="light" translucent />
+
+      <AuthVideoHero onIndexChange={setActiveIndex} />
+
+      <View style={StyleSheet.absoluteFillObject}>
+        {/* Logo + wordmark centered over the video */}
+        <View style={[styles.logoArea, { paddingTop: insets.top + 32 }]}>
+          <LogoMark size={180} />
+          <View style={styles.wordmark}>
+            <Text style={styles.wordmarkScript}>Art</Text>
+            <Text style={styles.wordmarkBold}>bud</Text>
+          </View>
         </View>
 
-        <Card style={styles.panel}>
-          {!isConfigured ? (
-            <View style={styles.notice}>
-              <Badge label="Supabase Setup Needed" variant="comingSoon" />
-              <Text style={styles.noticeCopy}>
-                Add your real Supabase keys to the local `.env` file before trying sign in.
-              </Text>
-            </View>
-          ) : null}
+        {/* Dark bottom panel */}
+        <View style={[styles.panel, { paddingBottom: insets.bottom + 24 }]}>
+          {/* Dot indicators */}
+          <View style={styles.dotsRow}>
+            {authShowcaseItems.map((item, index) => (
+              <View
+                key={item.id}
+                style={[styles.dot, index === activeIndex && styles.dotActive]}
+              />
+            ))}
+          </View>
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {/* Auth buttons */}
+          <View style={styles.buttons}>
+            <AuthPillButton
+              icon={<EmailMark />}
+              label="Continue with Email"
+              onPress={() => router.push('/(auth)/login')}
+            />
+            <AuthPillButton
+              icon={<PhoneMark />}
+              label="Continue with Phone"
+              onPress={() => showComingSoon('phone')}
+            />
+            <AuthPillButton
+              icon={<GoogleMark />}
+              label="Continue with Google"
+              onPress={() => showComingSoon('google')}
+            />
+            {isAppleSignInAvailable ? (
+              <AuthPillButton
+                icon={<AppleMark />}
+                label="Continue with Apple"
+                onPress={() => showComingSoon('apple')}
+              />
+            ) : null}
+          </View>
 
-          <Button onPress={() => router.push('/(auth)/signup')}>Create account</Button>
-          <Button onPress={() => router.push('/(auth)/login')} variant="outline">
-            Log in
-          </Button>
-          <Button
-            disabled={!isConfigured}
-            loading={busyAction === 'google'}
-            onPress={() => void runSocialAuth('google')}
-            variant="surface"
-          >
-            Continue with Google
-          </Button>
-          {isAppleSignInAvailable ? (
-            <Button
-              disabled={!isConfigured}
-              loading={busyAction === 'apple'}
-              onPress={() => void runSocialAuth('apple')}
-              variant="surface"
-            >
-              Continue with Apple
-            </Button>
-          ) : null}
-          <Button onPress={() => router.push('/(auth)/login?mode=phone')} variant="ghost">
-            Use phone number
-          </Button>
-        </Card>
-      </ScrollView>
-    </SafeAreaView>
+          <Pressable onPress={() => router.push('/(auth)/signup')}>
+            <Text style={styles.signupLink}>
+              New to Art Bud?{' '}
+              <Text style={styles.signupLinkBold}>Create account</Text>
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function AuthPillButton({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.pillButton, pressed && styles.pillButtonPressed]}
+    >
+      <View style={styles.pillIcon}>{icon}</View>
+      <Text style={styles.pillLabel}>{label}</Text>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    backgroundColor: theme.colors.background.base,
+  root: {
+    backgroundColor: '#18120D',
     flex: 1,
   },
-  content: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: theme.spacing[3],
-  },
-  hero: {
+  logoArea: {
     alignItems: 'center',
-    gap: theme.spacing[2],
-    marginBottom: theme.spacing[3],
+    flex: 1,
+    justifyContent: 'center',
   },
   logo: {
-    height: 136,
-    width: 220,
-  },
-  title: {
-    ...textStyles.hero,
-    fontSize: 52,
-    lineHeight: 56,
-    textAlign: 'center',
-  },
-  tagline: {
-    ...textStyles.editorial,
-    textAlign: 'center',
-  },
-  copy: {
-    ...textStyles.body,
-    color: theme.colors.text.secondary,
-    maxWidth: 420,
-    textAlign: 'center',
+    height: 180,
+    width: 180,
   },
   panel: {
-    gap: theme.spacing[2],
+    backgroundColor: 'rgba(24, 18, 13, 0.88)',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    gap: 14,
+    paddingHorizontal: 24,
+    paddingTop: 20,
   },
-  notice: {
+  dotsRow: {
+    alignSelf: 'center',
+    flexDirection: 'row',
     gap: 8,
   },
-  noticeCopy: {
-    ...textStyles.caption,
+  dot: {
+    backgroundColor: 'rgba(245, 237, 224, 0.3)',
+    borderRadius: 999,
+    height: 6,
+    width: 6,
   },
-  error: {
-    ...textStyles.caption,
-    color: theme.colors.state.danger,
+  dotActive: {
+    backgroundColor: theme.colors.action.primary,
+    width: 18,
+  },
+  wordmark: {
+    alignItems: 'baseline',
+    flexDirection: 'row',
+    marginTop: 8,
+  },
+  wordmarkScript: {
+    color: '#F5EDE0',
+    fontFamily: theme.typography.fontFamily.script,
+    fontSize: 42,
+    lineHeight: 44,
+  },
+  wordmarkBold: {
+    color: '#F5EDE0',
+    fontFamily: theme.typography.fontFamily.bodyBold,
+    fontSize: 26,
+    letterSpacing: 2,
+    lineHeight: 44,
+  },
+  buttons: {
+    gap: 10,
+  },
+  pillButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 237, 224, 0.12)',
+    borderColor: 'rgba(245, 237, 224, 0.2)',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    height: 52,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  pillButtonPressed: {
+    opacity: 0.75,
+  },
+  pillIcon: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 20,
+  },
+  pillLabel: {
+    color: '#F5EDE0',
+    fontFamily: theme.typography.fontFamily.bodyMedium,
+    fontSize: 15,
+  },
+  signupLink: {
+    color: 'rgba(245, 237, 224, 0.5)',
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  signupLinkBold: {
+    color: 'rgba(245, 237, 224, 0.85)',
+    fontFamily: theme.typography.fontFamily.bodyMedium,
   },
 });

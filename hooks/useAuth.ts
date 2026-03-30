@@ -1,9 +1,12 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { makeRedirectUri } from 'expo-auth-session';
+import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
-import { useEffect } from 'react';
+import Constants from 'expo-constants';
+import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
+import { parseAuthRedirectUrl } from '@/lib/authRedirect';
 import { UserProfile } from '@/lib/types';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
@@ -15,20 +18,26 @@ const oauthRedirectTo = makeRedirectUri({
   path: 'auth/callback',
 });
 
-async function parseSessionFromUrl(url: string) {
-  const fragment = url.includes('#') ? url.split('#')[1] : '';
-  const query = !fragment && url.includes('?') ? url.split('?')[1] : '';
-  const params = new URLSearchParams(fragment || query);
-  const accessToken = params.get('access_token');
-  const refreshToken = params.get('refresh_token');
+async function completeSessionFromRedirectUrl(url: string) {
+  const payload = parseAuthRedirectUrl(url);
 
-  if (!accessToken || !refreshToken) {
+  if (!payload) {
     return null;
   }
 
+  if (payload.type === 'code') {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(payload.code);
+
+    if (error) {
+      throw error;
+    }
+
+    return data.session;
+  }
+
   const { data, error } = await supabase.auth.setSession({
-    access_token: accessToken,
-    refresh_token: refreshToken,
+    access_token: payload.accessToken,
+    refresh_token: payload.refreshToken,
   });
 
   if (error) {
@@ -147,6 +156,7 @@ interface OnboardingPayload {
 }
 
 export function useAuth() {
+  const [appleAvailable, setAppleAvailable] = useState(Platform.OS === 'ios');
   const session = useAuthStore((state) => state.session);
   const user = useAuthStore((state) => state.user);
   const profile = useAuthStore((state) => state.profile);
@@ -155,7 +165,37 @@ export function useAuth() {
 
   const isLoggedIn = Boolean(session?.user);
   const needsOnboarding = isLoggedIn && (!profile || joinedCommunityCount < 1);
-  const isAppleSignInAvailable = Platform.OS === 'ios';
+  const isAppleSignInAvailable = appleAvailable;
+
+  useEffect(() => {
+    let mounted = true;
+
+    const resolveAppleAvailability = async () => {
+      if (Platform.OS !== 'ios') {
+        if (mounted) {
+          setAppleAvailable(false);
+        }
+        return;
+      }
+
+      try {
+        const available = await AppleAuthentication.isAvailableAsync();
+        if (mounted) {
+          setAppleAvailable(available);
+        }
+      } catch {
+        if (mounted) {
+          setAppleAvailable(false);
+        }
+      }
+    };
+
+    void resolveAppleAvailability();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const signInWithEmail = async ({ email, password }: EmailCredentials) => {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -225,25 +265,41 @@ export function useAuth() {
     const result = await WebBrowser.openAuthSessionAsync(data.url, oauthRedirectTo);
 
     if (result.type === 'success') {
-      return parseSessionFromUrl(result.url);
+      return completeSessionFromRedirectUrl(result.url);
     }
 
-    return null;
+    if (result.type === 'cancel' || result.type === 'dismiss') {
+      if (Constants.appOwnership === 'expo') {
+        throw new Error(
+          'Google sign-in needs a development build or production build. Expo Go does not reliably complete the OAuth return flow.',
+        );
+      }
+
+      throw new Error('Google sign-in was cancelled before it finished.');
+    }
+
+    throw new Error('Google sign-in did not complete successfully.');
   };
 
   const signInWithApple = async () => {
+    const nonce = Crypto.randomUUID();
+    const state = Crypto.randomUUID();
     const credential = await AppleAuthentication.signInAsync({
+      nonce,
       requestedScopes: [
         AppleAuthentication.AppleAuthenticationScope.EMAIL,
         AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
       ],
+      state,
     });
 
-    if (!credential.identityToken) {
+    if (!credential.identityToken || !credential.authorizationCode) {
       throw new Error('Apple sign-in did not return an identity token.');
     }
 
     const { data, error } = await supabase.auth.signInWithIdToken({
+      access_token: credential.authorizationCode,
+      nonce,
       provider: 'apple',
       token: credential.identityToken,
     });

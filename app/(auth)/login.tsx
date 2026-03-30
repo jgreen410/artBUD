@@ -1,31 +1,24 @@
-import { Link, useLocalSearchParams, router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { Link, router } from 'expo-router';
+import { useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, Card, Input, Tag } from '@/components/ui';
+import { AuthVideoHero } from '@/components/auth';
+import { LogoMark } from '@/components/icons';
+import { Button, Input, KeyboardAwareScrollView } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
-import { textStyles, theme } from '@/lib/theme';
-
-type LoginMode = 'email' | 'phone';
+import { theme } from '@/lib/theme';
 
 export default function LoginScreen() {
-  const params = useLocalSearchParams<{ mode?: string }>();
-  const defaultMode: LoginMode = params.mode === 'phone' ? 'phone' : 'email';
-  const { isAppleSignInAvailable, isConfigured, sendPhoneOtp, signInWithApple, signInWithEmail, signInWithGoogle, verifyPhoneOtp } =
-    useAuth();
+  const { isConfigured, signInWithEmail } = useAuth();
+  const insets = useSafeAreaInsets();
 
-  const [mode, setMode] = useState<LoginMode>(defaultMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [phone, setPhone] = useState('');
-  const [token, setToken] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setMode(defaultMode);
-  }, [defaultMode]);
+  const passwordRef = useRef<TextInput | null>(null);
 
   const captureError = (authError: unknown) => {
     setError(authError instanceof Error ? authError.message : 'Something went wrong. Please try again.');
@@ -44,65 +37,38 @@ export default function LoginScreen() {
     }
   };
 
-  const handleSendOtp = async () => {
-    setBusyAction('phone-send');
-    setError(null);
-
-    try {
-      await sendPhoneOtp(phone);
-      setOtpSent(true);
-    } catch (authError) {
-      captureError(authError);
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    setBusyAction('phone-verify');
-    setError(null);
-
-    try {
-      await verifyPhoneOtp({ phone, token });
-    } catch (authError) {
-      captureError(authError);
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
-  const handleSocial = async (provider: 'google' | 'apple') => {
-    setBusyAction(provider);
-    setError(null);
-
-    try {
-      if (provider === 'google') {
-        await signInWithGoogle();
-      } else {
-        await signInWithApple();
-      }
-    } catch (authError) {
-      captureError(authError);
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <Button onPress={() => router.back()} size="sm" variant="ghost">
-            Back
-          </Button>
-          <Text style={textStyles.screenTitle}>Log in</Text>
-          <Text style={styles.copy}>Pick your preferred sign-in method and jump back into the studio.</Text>
-        </View>
+    <View style={styles.root}>
+      <StatusBar style="light" translucent />
 
-        <Card style={styles.card}>
-          <View style={styles.modeRow}>
-            <Tag label="Email" onPress={() => setMode('email')} variant={mode === 'email' ? 'selected' : 'default'} />
-            <Tag label="Phone" onPress={() => setMode('phone')} variant={mode === 'phone' ? 'selected' : 'default'} />
+      <AuthVideoHero />
+
+      {/* Back button floating over video */}
+      <View style={[styles.backWrap, { top: insets.top + 8 }]}>
+        <Pressable
+          onPress={() => router.back()}
+          style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}
+        >
+          <Text style={styles.backLabel}>← Back</Text>
+        </Pressable>
+      </View>
+
+      {/* Keyboard-aware scroll to push panel above keyboard */}
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.scrollContent}
+        extraBottomPadding={insets.bottom + 24}
+        keyboardVerticalOffset={insets.top}
+        showsVerticalScrollIndicator={false}
+        style={StyleSheet.absoluteFillObject}
+      >
+        <View style={[styles.panel, { paddingBottom: insets.bottom + 24 }]}>
+          {/* Logo + wordmark */}
+          <View style={styles.logoWrap}>
+            <LogoMark size={110} />
+            <View style={styles.wordmark}>
+              <Text style={styles.wordmarkScript}>Art</Text>
+              <Text style={styles.wordmarkBold}>bud</Text>
+            </View>
           </View>
 
           {!isConfigured ? (
@@ -111,143 +77,127 @@ export default function LoginScreen() {
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          {mode === 'email' ? (
-            <View style={styles.form}>
-              <Input
-                autoCapitalize="none"
-                keyboardType="email-address"
-                label="Email"
-                onChangeText={setEmail}
-                placeholder="artist@example.com"
-                value={email}
-              />
-              <Input
-                autoCapitalize="none"
-                label="Password"
-                onChangeText={setPassword}
-                placeholder="Enter your password"
-                secureTextEntry
-                value={password}
-              />
-              <Button disabled={!isConfigured} loading={busyAction === 'email'} onPress={() => void handleEmailLogin()}>
-                Log in with email
-              </Button>
-            </View>
-          ) : (
-            <View style={styles.form}>
-              <Input
-                keyboardType="phone-pad"
-                label="Phone number"
-                onChangeText={setPhone}
-                placeholder="+1 555 555 5555"
-                value={phone}
-              />
-              {otpSent ? (
-                <Input
-                  keyboardType="number-pad"
-                  label="SMS code"
-                  onChangeText={setToken}
-                  placeholder="123456"
-                  value={token}
-                />
-              ) : null}
-              <Button
-                disabled={!isConfigured}
-                loading={busyAction === 'phone-send'}
-                onPress={() => void handleSendOtp()}
-                variant={otpSent ? 'outline' : 'primary'}
-              >
-                {otpSent ? 'Send a new code' : 'Send SMS code'}
-              </Button>
-              {otpSent ? (
-                <Button
-                  disabled={!isConfigured}
-                  loading={busyAction === 'phone-verify'}
-                  onPress={() => void handleVerifyOtp()}
-                  variant="secondary"
-                >
-                  Verify code
-                </Button>
-              ) : null}
-            </View>
-          )}
-
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerCopy}>or continue with</Text>
-            <View style={styles.dividerLine} />
+          <View style={styles.form}>
+            <Input
+              autoCapitalize="none"
+              keyboardType="email-address"
+              label="Email"
+              onChangeText={setEmail}
+              onSubmitEditing={() => passwordRef.current?.focus()}
+              placeholder="artist@example.com"
+              returnKeyType="next"
+              value={email}
+            />
+            <Input
+              autoCapitalize="none"
+              label="Password"
+              onChangeText={setPassword}
+              onSubmitEditing={() => void handleEmailLogin()}
+              placeholder="Enter your password"
+              ref={passwordRef}
+              returnKeyType="done"
+              secureTextEntry
+              value={password}
+            />
+            <Button
+              disabled={!isConfigured}
+              loading={busyAction === 'email'}
+              onPress={() => void handleEmailLogin()}
+            >
+              Log in with email
+            </Button>
           </View>
 
-          <Button disabled={!isConfigured} loading={busyAction === 'google'} onPress={() => void handleSocial('google')} variant="surface">
-            Continue with Google
-          </Button>
-          {isAppleSignInAvailable ? (
-            <Button disabled={!isConfigured} loading={busyAction === 'apple'} onPress={() => void handleSocial('apple')} variant="surface">
-              Continue with Apple
-            </Button>
-          ) : null}
-        </Card>
-
-        <Text style={styles.footer}>
-          Need an account? <Link href="/(auth)/signup" style={styles.link}>Create one</Link>
-        </Text>
-      </ScrollView>
-    </SafeAreaView>
+          <Text style={styles.footer}>
+            Need an account?{' '}
+            <Link href="/(auth)/signup" style={styles.footerLink}>Create one</Link>
+          </Text>
+        </View>
+      </KeyboardAwareScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    backgroundColor: theme.colors.background.base,
+  root: {
+    backgroundColor: '#18120D',
     flex: 1,
   },
-  content: {
-    gap: theme.spacing[3],
-    padding: theme.spacing[3],
+  backWrap: {
+    left: 16,
+    position: 'absolute',
+    zIndex: 10,
   },
-  header: {
-    gap: theme.spacing[1],
+  backButton: {
+    backgroundColor: 'rgba(24, 18, 13, 0.6)',
+    borderColor: 'rgba(245, 237, 224, 0.2)',
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
-  copy: {
-    ...textStyles.body,
-    color: theme.colors.text.secondary,
+  backButtonPressed: {
+    opacity: 0.7,
   },
-  card: {
-    gap: theme.spacing[2],
+  backLabel: {
+    color: '#F5EDE0',
+    fontFamily: theme.typography.fontFamily.bodyMedium,
+    fontSize: 14,
   },
-  modeRow: {
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'flex-end',
+  },
+  panel: {
+    backgroundColor: 'rgba(24, 18, 13, 0.9)',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    gap: 16,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+  },
+  logoWrap: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  wordmark: {
+    alignItems: 'baseline',
     flexDirection: 'row',
-    gap: 10,
   },
-  form: {
-    gap: theme.spacing[2],
+  wordmarkScript: {
+    color: '#F5EDE0',
+    fontFamily: theme.typography.fontFamily.script,
+    fontSize: 36,
+    lineHeight: 38,
+  },
+  wordmarkBold: {
+    color: '#F5EDE0',
+    fontFamily: theme.typography.fontFamily.bodyBold,
+    fontSize: 22,
+    letterSpacing: 2,
+    lineHeight: 38,
   },
   notice: {
-    ...textStyles.caption,
-  },
-  error: {
-    ...textStyles.caption,
-    color: theme.colors.state.danger,
-  },
-  divider: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 12,
-  },
-  dividerLine: {
-    backgroundColor: theme.colors.border.subtle,
-    flex: 1,
-    height: 1,
-  },
-  dividerCopy: {
-    ...textStyles.caption,
-  },
-  footer: {
-    ...textStyles.caption,
-    color: theme.colors.text.secondary,
+    color: 'rgba(245, 237, 224, 0.5)',
+    fontSize: 12,
     textAlign: 'center',
   },
-  link: {
-    color: theme.colors.action.primary,
+  error: {
+    color: theme.colors.state.danger,
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  form: {
+    gap: 12,
+  },
+  footer: {
+    color: 'rgba(245, 237, 224, 0.5)',
+    fontSize: 13,
+    paddingBottom: 4,
+    textAlign: 'center',
+  },
+  footerLink: {
+    color: 'rgba(245, 237, 224, 0.85)',
+    fontFamily: theme.typography.fontFamily.bodyMedium,
   },
 });

@@ -1,4 +1,4 @@
-import { Feather } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 
 import { theme } from '@/lib/theme';
@@ -10,16 +10,13 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: theme.colors.action.primary,
         tabBarInactiveTintColor: theme.colors.text.secondary,
+        tabBarShowLabel: false,
         tabBarStyle: {
           backgroundColor: theme.colors.background.surface,
           borderTopColor: theme.colors.border.subtle,
-          height: 72,
-          paddingBottom: 10,
-          paddingTop: 10,
-        },
-        tabBarLabelStyle: {
-          fontFamily: theme.typography.fontFamily.bodyMedium,
-          fontSize: 12,
+          height: 76,
+          paddingBottom: 14,
+          paddingTop: 12,
         },
         sceneStyle: {
           backgroundColor: theme.colors.background.base,
@@ -30,24 +27,31 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => <Feather color={color} name="home" size={size} />,
+          tabBarAccessibilityLabel: 'Home',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons color={color} name="home-variant-outline" size={size + 1} />
+          ),
         }}
       />
       <Tabs.Screen
         name="my-feed"
         options={{
           title: 'My Feed',
-          tabBarIcon: ({ color, size }) => <Feather color={color} name="users" size={size} />,
+          tabBarAccessibilityLabel: 'My Feed',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons color={color} name="account-group-outline" size={size + 1} />
+          ),
         }}
       />
       <Tabs.Screen
         name="create"
         options={{
           title: 'Post',
+          tabBarAccessibilityLabel: 'Create Post',
           tabBarIcon: ({ focused }) => (
-            <Feather
+            <MaterialCommunityIcons
               color={focused ? theme.colors.text.inverse : theme.colors.text.primary}
-              name="plus-circle"
+              name="brush"
               size={28}
             />
           ),
@@ -65,14 +69,20 @@ export default function TabsLayout() {
         name="communities"
         options={{
           title: 'Communities',
-          tabBarIcon: ({ color, size }) => <Feather color={color} name="grid" size={size} />,
+          tabBarAccessibilityLabel: 'Communities',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons color={color} name="palette-outline" size={size + 2} />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => <Feather color={color} name="user" size={size} />,
+          tabBarAccessibilityLabel: 'Profile',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons color={color} name="account-circle-outline" size={size + 2} />
+          ),
         }}
       />
     </Tabs>
