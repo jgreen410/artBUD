@@ -33,8 +33,8 @@ Until an automated E2E harness exists, "end-to-end" means a full manual smoke te
 - 2026-03-30: local Git repository initialized on `main`
 - repository metadata added: `README.md`, `.gitattributes`, and updated `.gitignore`
 - sensitive local files remain ignored, including `.env` and `supabase/.temp/`
-- project files are staged for the first commit
-- first commit and GitHub remote push are still pending because this machine has no Git author identity configured and no direct GitHub repo-creation tooling installed
+- initial commit created and pushed to `origin/main`
+- GitHub remote linked at `https://github.com/jgreen410/artBUD`
 
 ## Completed Work
 
@@ -502,6 +502,26 @@ Result:
 - Authenticated backend smoke passed for demo-user sign-in, feed reads, community reads, profile reads, comment create and cleanup, and membership toggle or restore
 - Manual in-app simulator or device tap-through is still pending because it has not been automated from this terminal
 
+### 2026-03-30
+
+Scope:
+- Repository setup
+
+Executed:
+- `git init -b main`
+- `git check-ignore .env supabase/.temp/project-ref`
+- `git add .`
+- `git commit -m "Initial Art Bud MVP scaffold"`
+- `git remote add origin https://github.com/jgreen410/artBUD.git`
+- `git push -u origin main`
+
+Result:
+- Local Git repository initialized successfully
+- Sensitive local files remained ignored
+- Initial commit created successfully
+- GitHub remote connected successfully
+- `main` pushed to GitHub successfully
+
 ## Next Required Actions
 
 1. Run a manual simulator or device tap-through for Step 8 and log the result here.
@@ -512,4 +532,3 @@ Result:
 6. Run a manual simulator or device tap-through for Step 13 and log the result here.
 7. Run a manual simulator or device tap-through for Step 14 and log the result here.
 8. Rotate the service-role key, Supabase access token, and database password because they were shared outside local secret storage.
-9. Configure `git user.name` and `git user.email`, then create or link the GitHub remote and push `main`.
