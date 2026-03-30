@@ -1,0 +1,5 @@
+-- Demo auth-linked data is intentionally not inserted via raw SQL.
+-- Current Supabase projects restrict direct writes to auth schema objects in common
+-- migration and seed workflows, and Art Bud profiles reference auth.users by foreign key.
+-- Use the server-only script below instead after your project exists:
+--   npm run seed:demo
